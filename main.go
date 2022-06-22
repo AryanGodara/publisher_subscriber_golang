@@ -2,30 +2,25 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"strings"
 )
 
-func basicHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()                   // parse arguments, you have to call this by yourself
-	fmt.Println("r.Form: ", r.Form) // print form info in server side
-	fmt.Println("path(r.URL.Path): ", r.URL.Path)
-	fmt.Println("scheme(r.URL.Scheme): ", r.URL.Scheme)
-	fmt.Println("(r.Form[\"url_long\"]", r.Form["url_long"])
-
-	for k, v := range r.Form {
-		fmt.Println("Key:", k)
-		fmt.Println("Val:", strings.Join(v, ""))
-	}
-
-	fmt.Fprintf(w, "Hello Aryan!") // sends data to client side
+func httpHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Connected to handler")
+	fmt.Fprintln(w, "You're here again, move forward from this plz")
 }
 
 func main() {
-	http.HandleFunc("/", basicHandler)       // set router
-	err := http.ListenAndServe(":8080", nil) // set listen port
+	http.HandleFunc("/", httpHandler)
+	// funfun := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	fmt.Println("Trying handleRFunc")
+	// })
+
+	// http.HandleFunc("/", funfun)
+
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		fmt.Println(err.Error())
+		return
 	}
 }

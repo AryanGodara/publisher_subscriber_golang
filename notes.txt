@@ -1,1 +1,1 @@
-Framework: gin + gorilla for client + server
+No Framework allowed, use only gorilla Framework
