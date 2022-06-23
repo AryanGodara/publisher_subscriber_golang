@@ -2,53 +2,127 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"time"
 )
 
-func f1() {
-	fmt.Println("f1 (goroutine) execution started")
-
-	defer fmt.Println("f1 execution finished")
-
-	for i := 0; i < 3; i++ {
-		fmt.Println("f1, i = ", i)
-	}
+type Topic struct {
+	message string
+	id      int // to uniquely identify each topic
 }
 
-func f2() {
-	fmt.Println("f2 (goroutine) execution started")
+type Publisher struct {
+	name string
+}
 
-	defer fmt.Println("f2 execution finished")
+type Subscriber struct {
+	name   string
+	topic  Topic
+	buffer chan Topic
+}
+type Broker struct {
+	TopicBuffer chan Topic
+	Subscribers map[int][]*Subscriber
+}
 
-	for i := 5; i < 8; i++ {
-		fmt.Println("f, i = ", i)
+func (pub *Publisher) Publish(topic Topic, queue *Broker) bool {
+	fmt.Println("Publishing Topic ", topic.message, ".....")
+	queue.TopicBuffer <- topic
+	fmt.Println("\nPublished Topic ", topic.message, "To message queue")
+
+	return true
+}
+
+func (pub *Publisher) SignalStop(queue *Broker) bool {
+	return queue.SignalStop()
+}
+
+func (sub *Subscriber) Subscribe(queue *Broker) bool {
+	fmt.Println("Subscriber ", sub.name, "subscribing to Topic ", sub.topic.message, ".....")
+
+	queue.Subscribers[sub.topic.id] = append(queue.Subscribers[sub.topic.id], sub)
+	fmt.Println("Subscriber ", sub.name, "subscribed to Topic ", sub.topic.message)
+
+	return true
+}
+
+func (sub *Subscriber) ConsumeBuffer() bool {
+	for topic := range sub.buffer {
+		fmt.Println("Consumed ", topic.message, " from subscriber ", sub.name)
 	}
+
+	fmt.Println("Subscriber ", sub.name, "Closed")
+
+	return true
+}
+
+func (sub *Broker) NotifyConsumer() bool {
+	for topic := range sub.TopicBuffer {
+		subscribers := sub.Subscribers[topic.id]
+
+		for _, s := range subscribers {
+			s.buffer <- topic
+		}
+	}
+
+	return true
+}
+
+func (sub *Broker) SignalStop() bool {
+	for _, v := range sub.Subscribers {
+		for _, i := range v {
+			close(i.buffer)
+		}
+	}
+
+	return true
 }
 
 func main() {
-	fmt.Println("main execution started")
-	defer fmt.Println("Main execution stopped")
+	topics := []Topic{
+		{"first", 1},
+		{"second", 2},
+		{"third", 2},
+		{"fourth", 2},
+		{"fifth", 1},
+	}
 
-	fmt.Println("No. of CPUs: ", runtime.NumCPU())
-	fmt.Println("No. of Goroutines: ", runtime.NumGoroutine())
-	fmt.Println()
-	fmt.Println("OS: ", runtime.GOOS)
-	fmt.Println("Arch: ", runtime.GOARCH)
-	fmt.Println()
-	fmt.Println("GOMAXPROCS: ", runtime.GOMAXPROCS(0))
-	fmt.Println()
+	broker := Broker{
+		TopicBuffer: make(chan Topic, 3),
+		Subscribers: make(map[int][]*Subscriber),
+	}
 
-	go f1()
-	fmt.Println("No. of Goroutines after go f1(): ", runtime.NumGoroutine())
+	publisher := Publisher{name: "first"}
 
-	time.Sleep(time.Second * 2)
+	subscriber_1 := Subscriber{
+		name:   "s_1",
+		buffer: make(chan Topic),
+		topic:  topics[0],
+	}
+	subscriber_2 := Subscriber{
+		name:   "s_2",
+		buffer: make(chan Topic),
+		topic:  topics[1],
+	}
+	subscriber_3 := Subscriber{
+		name:   "s_2",
+		buffer: make(chan Topic),
+		topic:  topics[2],
+	}
 
-	f2()
-	fmt.Println("No. of Goroutines after f2(): ", runtime.NumGoroutine())
+	go subscriber_1.ConsumeBuffer()
+	go subscriber_2.ConsumeBuffer()
+	go subscriber_3.ConsumeBuffer()
+	go broker.NotifyConsumer()
 
-	go f2()
-	fmt.Println("No. of Goroutines after go f2(): ", runtime.NumGoroutine())
+	subscriber_1.Subscribe(&broker)
+	subscriber_2.Subscribe(&broker)
+	subscriber_3.Subscribe(&broker)
 
-	time.Sleep(time.Second * 2)
+	for i := range topics {
+		publisher.Publish(topics[i], &broker)
+	}
+
+	<-time.After(1 * time.Second)
+	publisher.SignalStop(&broker)
+	<-time.After(1 * time.Second)
 }
