@@ -26,3 +26,8 @@ func main() {
 
 	time.Sleep(time.Second)
 }
+
+// For an unbuffered channel, the sender (the func goroutine) blocks the channel, until
+// the receiver(the main goroutine) receives the data from the channel
+//! c <- 10  => Blocks the goroutine until main wakes up(2 secs). As it can't read from
+//! the channel when it's sleeping.
