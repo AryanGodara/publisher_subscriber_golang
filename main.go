@@ -17,11 +17,13 @@ func main() {
 
 	serverMuxA := http.NewServeMux() // ServeMuxA
 	serverMuxA.HandleFunc("/", hello)
+	serverMuxA.HandleFunc("/aecho", secHandler)
 
 	serverMuxB := http.NewServeMux() // ServeMuxB
 	serverMuxB.HandleFunc("/", world)
 
-	http.HandleFunc("/", helloHandler) // Default ServeMux
+	http.HandleFunc("/", helloHandler)   // Default ServeMux
+	http.HandleFunc("/echo", secHandler) // Default ServeMux
 
 	go func() {
 		fmt.Println("Listening on 8080")
@@ -54,4 +56,9 @@ func main() {
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello World")
+}
+
+func secHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Is this page common for all?")
+	fmt.Fprintln(w, "No, it only works for the ServeMux(s) that use it as a HandleFunc")
 }
