@@ -9,6 +9,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var msg string = "Starting out message"
+
 //* HTTP Portion
 func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Index Page")
@@ -25,8 +27,9 @@ func httppostHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 	fmt.Fprintln(w, "This is the message: ", string(b))
+	msg = string(b)
 }
 
 //* HTTP Portion
@@ -53,7 +56,8 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Received: %s", message)
 
-		err = conn.WriteMessage(messageType, message)
+		// err = conn.WriteMessage(messageType, message)
+		err = conn.WriteMessage(messageType, []byte(msg))
 		if err != nil {
 			log.Println("Error during message writing", err)
 			break
