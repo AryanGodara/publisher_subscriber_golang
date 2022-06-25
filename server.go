@@ -10,6 +10,7 @@ import (
 )
 
 var msg string = "Starting out message"
+var flag bool = false
 
 //* HTTP Portion
 func home(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +31,7 @@ func httppostHandler(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(string(b))
 	fmt.Fprintln(w, "This is the message: ", string(b))
 	msg = string(b)
+	flag = true
 }
 
 //* HTTP Portion
@@ -48,20 +50,31 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 	// The event loop
 	for {
-		messageType, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error during message reading", err)
-			break
+		//? Delete select block to restore
+		switch {
+		case flag == true:
+			err = conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
+			if err != nil {
+				log.Println("Error during message writing", err)
+				return
+			}
+			flag = false // Turns true when message changes
 		}
+		//? Uncomment below code to restore
+		// messageType, message, err := conn.ReadMessage()
+		// if err != nil {
+		// 	log.Println("Error during message reading", err)
+		// 	break
+		// }
 
-		log.Printf("Received: %s", message)
+		// log.Printf("Received: %s", message)
 
 		// err = conn.WriteMessage(messageType, message)
-		err = conn.WriteMessage(messageType, []byte(msg))
-		if err != nil {
-			log.Println("Error during message writing", err)
-			break
-		}
+		// err = conn.WriteMessage(messageType, []byte(msg))
+		// if err != nil {
+		// 	log.Println("Error during message writing", err)
+		// 	break
+		// }
 	}
 }
 

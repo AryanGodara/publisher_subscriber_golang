@@ -43,18 +43,18 @@ func main() {
 
 	go receiveHandler(conn)
 
-	mssg := string(os.Args[1])
+	// mssg := string(os.Args[1])
 
 	// Our main loop for the client, we send our relevant packets here
 	for {
 		select {
-		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
-			// Send an echo packet every second
-			err := conn.WriteMessage(websocket.TextMessage, []byte(mssg))
-			if err != nil {
-				log.Println("Error during writing to websocket: ", err)
-				return
-			}
+		// case <-time.After(time.Duration(1) * time.Millisecond * 1000):
+		// 	// Send an echo packet every second
+		// 	err := conn.WriteMessage(websocket.TextMessage, []byte(mssg))
+		// 	if err != nil {
+		// 		log.Println("Error during writing to websocket: ", err)
+		// 		return
+		// 	}
 
 		case <-interrupt:
 			// We received a SIGINT (Ctrl + C). Terminate gracefully...
