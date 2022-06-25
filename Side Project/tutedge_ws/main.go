@@ -8,24 +8,24 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// We'll need to define an Upgrader, this'll require a Read and Write buffer size
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-// define a reader which will listen for new messages being sent to our WS endpoint
+func homePage(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Home Page\n")
+}
+
 func reader(conn *websocket.Conn) {
 	for {
-		// read in a message
 		messageType, msg, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
-
-		// print out that message for clarity
-		fmt.Println(string(msg))
+		log.Println(string(msg))
 
 		if err := conn.WriteMessage(messageType, msg); err != nil {
 			log.Println(err)
@@ -35,40 +35,28 @@ func reader(conn *websocket.Conn) {
 }
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	// CheckOrigin determines whether or not an incoming request from a different domain is allowed to connect, and if it isn't they'll be hit with a CORS error
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 
-	// upgrade this connection to a WebSocket connection
-	ws, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Panicln(err)
+		return
 	}
 
-	defer ws.Close() // good practice
+	defer conn.Close()
 
-	// helpful log statement to show connections
-	log.Println("Client Connected via WS protocol")
+	log.Println("Client Successfully Connected")
 
-	err = ws.WriteMessage(1, []byte("Hi Client!"))
-	if err != nil {
-		log.Println(err)
-	}
-
-	// listen indefinitely for new messages coming through on our WebSocket connection
-	reader(ws)
+	reader(conn)
 }
 
 func setupRoutes() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Home Page")
-	})
-
+	http.HandleFunc("/", homePage)
 	http.HandleFunc("/ws", wsEndpoint)
 }
 
 func main() {
-	fmt.Println("Hello World!!")
+	fmt.Println("Go WebSocekets")
 	setupRoutes()
 
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
