@@ -1,21 +1,14 @@
-main.go currently is just a dummy implementation of pub-sub.
+## To run the program :-
+```
+$ cd pub-sub-hub
+$ go run server.go
 
-```
-go run main.go
-```
+In different terminal(s)
+$ go run client.go   (in as many terminals as you want)
 
-For working examples :-
-- 1. godoc_websocket_eg
-```
-cd godoc_websocket_eg  
-(First Terminal)  
-go run server.go
-(Second Terminal)  
-go run client.go <message_you_want>
-(Third Terminal)  
-go run client.go <message_you_want>
-```
-It only prints the message being sent back to respective clients, not pub-sub model
 
-- 2. gorilla_echo_eg
-Just a copy of the example code of gorilla/websocket repository. Ignore this.
+For sending HTTP post requests, use Postman:
+POST: localhost:4000/postmessage
+
+In body - "Type out anything you want"
+```
