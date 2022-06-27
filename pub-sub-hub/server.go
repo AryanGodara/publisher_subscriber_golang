@@ -45,7 +45,7 @@ func (h *Hub) run() { //* Continuosly listening for registeration from clients, 
 			if _, ok := h.clients[client]; ok {
 				fmt.Println("Client Unregistered")
 				delete(h.clients, client)
-				close(client.send)
+				// close(client.send)
 			}
 		case message := <-h.broadcast:
 			fmt.Println("Message received to hub: ", string(message))
@@ -75,7 +75,7 @@ type Client struct {
 
 	conn *websocket.Conn
 
-	send chan []byte
+	// send chan []byte
 }
 
 //! CLIENT STRUCT
@@ -130,7 +130,8 @@ func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	//* Register and (defer Unregister) with the hub
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte)}
+	// client := &Client{hub: hub, conn: conn, send: make(chan []byte)}
+	client := &Client{hub: hub, conn: conn}
 	client.hub.register <- client
 
 	defer func() {
