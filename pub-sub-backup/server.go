@@ -53,7 +53,6 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		//? Delete select block to restore
 		switch {
 		case flag == true:
-			log.Println("Sending Message: ", msg)
 			err = conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
 			if err != nil {
 				log.Println("Error during message writing", err)
@@ -61,7 +60,21 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			flag = false // Turns true when message changes
 		}
+		//? Uncomment below code to restore
+		// messageType, message, err := conn.ReadMessage()
+		// if err != nil {
+		// 	log.Println("Error during message reading", err)
+		// 	break
+		// }
 
+		// log.Printf("Received: %s", message)
+
+		// err = conn.WriteMessage(messageType, message)
+		// err = conn.WriteMessage(messageType, []byte(msg))
+		// if err != nil {
+		// 	log.Println("Error during message writing", err)
+		// 	break
+		// }
 	}
 }
 

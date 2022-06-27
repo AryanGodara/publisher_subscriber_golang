@@ -9,6 +9,69 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+//! HUB CODE
+
+// Hub maintains the set of active clients and broadcasts messages to the clients
+type Hub struct {
+	// Register lients
+	clients map[*Client]bool
+
+	// Inbound messages from the clients
+	broadcast chan []byte
+
+	// Register requests from the clients.
+	register chan *Client
+
+	// Unregister requests from clients
+	unregister chan *Client
+}
+
+func newHub() *Hub {
+	return &Hub{
+		broadcast:  make(chan []byte),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		clients:    make(map[*Client]bool),
+	}
+}
+
+func (h *Hub) run() {
+	for {
+		select {
+		case client := <-h.register:
+			h.clients[client] = true
+		case client := <-h.unregister:
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
+			}
+		case message := <-h.broadcast:
+			for client := range h.clients {
+				select {
+				case client.send <- message:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
+		}
+	}
+}
+
+//! HUB CODE
+
+//! CLIENT STRUCT
+
+type Client struct {
+	hub *Hub
+
+	conn *websocket.Conn
+
+	send chan []byte
+}
+
+//! CLIENT STRUCT
+
 var msg string = "Starting out message"
 var flag bool = false
 
@@ -37,9 +100,12 @@ func httppostHandler(w http.ResponseWriter, r *http.Request) {
 //* HTTP Portion
 
 //* WebSocket Portion
-var upgrader = websocket.Upgrader{} // Use default options
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+} // Use default options
 
-func socketHandler(w http.ResponseWriter, r *http.Request) {
+func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -47,6 +113,16 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+
+	//* Register with the hub
+	client := &Client{hub: hub, conn: conn, send: make(chan []byte)}
+	client.hub.register <- client
+
+	defer func() {
+		client.hub.unregister <- client
+		client.conn.Close()
+	}()
+	//* Register with the hub
 
 	// The event loop
 	for {
@@ -68,6 +144,9 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 //* WebSocket Portion
 
 func main() {
+	//? For hub.go
+	hub := newHub()
+	go hub.run()
 
 	//todo: HTTP server runs on a new servemux
 	httpMux := http.NewServeMux()
@@ -83,7 +162,9 @@ func main() {
 	}()
 
 	//todo: Websocket server runs on the default servemux
-	http.HandleFunc("/socket", socketHandler)
+	http.HandleFunc("/socket", func(w http.ResponseWriter, r *http.Request) {
+		socketHandler(hub, w, r) // To pass in the 'hub' as an argument
+	})
 
 	fmt.Println("WebSocket Server listening on port 8080...")
 
