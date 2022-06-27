@@ -40,19 +40,27 @@ func (h *Hub) run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
+			fmt.Println("Client Registered")
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
+				fmt.Println("Client Unregistered")
 				delete(h.clients, client)
 				close(client.send)
 			}
 		case message := <-h.broadcast:
+			fmt.Println("Message received to hub: ", string(message))
 			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
+				err := client.conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
+				if err != nil {
+					log.Println("Error during message writing", err)
+					return
 				}
+				// select {
+				// case client.send <- message:
+				// default:
+				// 	close(client.send)
+				// 	delete(h.clients, client)
+				// }
 			}
 		}
 	}
@@ -80,7 +88,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Index Page")
 }
 
-func httppostHandler(w http.ResponseWriter, r *http.Request) {
+func httppostHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Use POST method here", http.StatusMethodNotAllowed)
 		return
@@ -91,10 +99,17 @@ func httppostHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	// fmt.Println(string(b))
-	fmt.Fprintln(w, "This is the message: ", string(b))
-	msg = string(b)
-	flag = true
+	msg = string(b) //* Uncomment these two lines to revert back
+	// flag = true
+
+	//* Comment below code to revert back
+	if len(hub.clients) != 0 {
+		hub.broadcast <- []byte(msg) //* BROADCASTING THE MESSAGE
+		fmt.Fprintln(w, "This is the message: ", string(b))
+	} else {
+		fmt.Println("Message received, but no place to send")
+		fmt.Fprintln(w, "Message received, but no place to send")
+	}
 }
 
 //* HTTP Portion
@@ -114,7 +129,7 @@ func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	//* Register with the hub
+	//* Register and (defer Unregister) with the hub
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte)}
 	client.hub.register <- client
 
@@ -122,9 +137,10 @@ func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		client.hub.unregister <- client
 		client.conn.Close()
 	}()
-	//* Register with the hub
+	//* Register and (defer Unregister) with the hub
 
 	// The event loop
+	// select {}
 	for {
 		//? Delete select block to restore
 		switch {
@@ -137,7 +153,6 @@ func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 			}
 			flag = false // Turns true when message changes
 		}
-
 	}
 }
 
@@ -151,7 +166,9 @@ func main() {
 	//todo: HTTP server runs on a new servemux
 	httpMux := http.NewServeMux()
 	httpMux.HandleFunc("/", home)
-	httpMux.HandleFunc("/postmessage", httppostHandler)
+	httpMux.HandleFunc("/postmessage", func(w http.ResponseWriter, r *http.Request) {
+		httppostHandler(hub, w, r)
+	})
 
 	go func() {
 		fmt.Println("HTTP Server listening on 4000")
