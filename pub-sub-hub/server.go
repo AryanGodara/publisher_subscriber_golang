@@ -81,7 +81,6 @@ type Client struct {
 //! CLIENT STRUCT
 
 var msg string = "Starting out message"
-var flag bool = false
 
 //* HTTP Portion
 func home(w http.ResponseWriter, r *http.Request) {
@@ -141,20 +140,7 @@ func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	//* Register and (defer Unregister) with the hub
 
 	// The event loop
-	// select {}
-	for {
-		//? Delete select block to restore
-		switch {
-		case flag == true:
-			log.Println("Sending Message: ", msg)
-			err = conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
-			if err != nil {
-				log.Println("Error during message writing", err)
-				return
-			}
-			flag = false // Turns true when message changes
-		}
-	}
+	select {} //! To stop the socketHandler, and hence, the ws conn from closing
 }
 
 //* WebSocket Portion
