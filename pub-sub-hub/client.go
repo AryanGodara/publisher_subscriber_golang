@@ -58,10 +58,10 @@ func main() {
 			}
 
 			select {
-			case <-done:
+			case <-done: // Close channel will give 0
 				log.Println("Receiver Channel Closed! Exiting...")
 
-			case <-time.After(time.Duration(1) * time.Second):
+			case <-time.After(time.Duration(1) * time.Second): // Did not receive anything from done channel
 				log.Println("Timeout in closing receiving channel. Exiting...")
 			}
 			return

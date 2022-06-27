@@ -16,7 +16,7 @@ type Hub struct {
 	// Register lients
 	clients map[*Client]bool
 
-	// Inbound messages from the clients
+	// Inbound messages from the http server
 	broadcast chan []byte
 
 	// Register requests from the clients.
@@ -26,7 +26,7 @@ type Hub struct {
 	unregister chan *Client
 }
 
-func newHub() *Hub {
+func newHub() *Hub { //? This one can be in the main function itself
 	return &Hub{
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
@@ -35,7 +35,7 @@ func newHub() *Hub {
 	}
 }
 
-func (h *Hub) run() {
+func (h *Hub) run() { //* Continuosly listening for registeration from clients, and messages from http server
 	for {
 		select {
 		case client := <-h.register:
