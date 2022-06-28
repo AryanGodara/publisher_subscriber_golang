@@ -67,6 +67,7 @@ func (h *Hub) run() {
 func (h *Hub) remove_closed(con *websocket.Conn) {
 	for client := range h.clients {
 		if h.clients[client] == true && client.conn == con {
+			client.conn.Close()
 			delete(h.clients, client)
 			log.Println("Client Unregistered Forcefully")
 		}
