@@ -10,6 +10,7 @@ import (
 )
 
 var Conn_lost = make(chan *websocket.Conn)
+var msg string = "Starting out message"
 
 type Hub struct {
 	clients    map[*Client]bool
@@ -76,8 +77,6 @@ type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
 }
-
-var msg string = "Starting out message"
 
 func httpHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
