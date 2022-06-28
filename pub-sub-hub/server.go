@@ -9,6 +9,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var Conn_lost = make(chan *websocket.Conn)
+
 //! HUB CODE
 
 // Hub maintains the set of active clients and broadcasts messages to the clients
@@ -38,6 +40,15 @@ func newHub() *Hub { //? This one can be in the main function itself
 func (h *Hub) run() { //* Continuosly listening for registeration from clients, and messages from http server
 	for {
 		select {
+		case con := <-Conn_lost:
+			//? We've found a closed client connection. Match this with all clients in map
+			// for client := range h.clients {
+			// 	if h.clients[client] == true && client.conn == con {
+			// 		delete(h.clients, client)
+			// 		fmt.Println("Client Unregistered Forcefully")
+			// 	}
+			// }
+			h.remove_closed(con)
 		case client := <-h.register:
 			h.clients[client] = true
 			fmt.Println("Client Registered")
@@ -45,23 +56,52 @@ func (h *Hub) run() { //* Continuosly listening for registeration from clients, 
 			if _, ok := h.clients[client]; ok {
 				fmt.Println("Client Unregistered")
 				delete(h.clients, client)
-				// close(client.send)
 			}
 		case message := <-h.broadcast:
 			fmt.Println("Message received to hub: ", string(message))
-			for client := range h.clients {
-				err := client.conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
-				if err != nil {
-					log.Println("Error during message writing", err)
-					return
+			//! Before sending, check status of all clients
+			select {
+			case con := <-Conn_lost:
+				h.remove_closed(con)
+			default:
+				for client := range h.clients {
+					err := client.conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
+					if err != nil {
+						log.Println("Error during message writing", err)
+						return
+					}
+					// select {
+					// case client.send <- message:
+					// default:
+					// 	close(client.send)
+					// 	delete(h.clients, client)
+					// }
 				}
-				// select {
-				// case client.send <- message:
-				// default:
-				// 	close(client.send)
-				// 	delete(h.clients, client)
-				// }
 			}
+
+			// for client := range h.clients {
+			// 	err := client.conn.WriteMessage(2, []byte(msg)) //* 2 for binary message
+			// 	if err != nil {
+			// 		log.Println("Error during message writing", err)
+			// 		return
+			// 	}
+			// 	// select {
+			// 	// case client.send <- message:
+			// 	// default:
+			// 	// 	close(client.send)
+			// 	// 	delete(h.clients, client)
+			// 	// }
+			// }
+		}
+	}
+}
+
+//? Interrupt client unregister function
+func (h *Hub) remove_closed(con *websocket.Conn) {
+	for client := range h.clients {
+		if h.clients[client] == true && client.conn == con {
+			delete(h.clients, client)
+			fmt.Println("Client Unregistered Forcefully")
 		}
 	}
 }
@@ -74,8 +114,6 @@ type Client struct {
 	hub *Hub
 
 	conn *websocket.Conn
-
-	// send chan []byte
 }
 
 //! CLIENT STRUCT
@@ -114,6 +152,7 @@ func httppostHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 //* HTTP Portion
 
 //* WebSocket Portion
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -140,7 +179,23 @@ func socketHandler(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	//* Register and (defer Unregister) with the hub
 
 	// The event loop
-	select {} //! To stop the socketHandler, and hence, the ws conn from closing
+	for {
+		// //? If this receives it first
+		// case con := <-Conn_lost:
+		// 	if con == client.conn { // This is the connection, to close properly
+		// 		return // This will call the defer func above.
+		// 	}
+		//? Receive a message "closed" from client, then push conn to conn_lost channel
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Error during reading message from client: ", err.Error())
+			break //* Will automatically call the defer func now
+		}
+		if string(msg) == "closed" {
+			Conn_lost <- conn
+			break
+		}
+	}
 }
 
 //* WebSocket Portion

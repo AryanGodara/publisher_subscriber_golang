@@ -19,6 +19,7 @@ func receiveHandler(connection *websocket.Conn) {
 		_, msg, err := connection.ReadMessage()
 		if err != nil {
 			log.Println("Error in receive: ", err)
+			// Conn_lost <- connection //? Send current connection reference to this channel
 			return
 		}
 
@@ -51,7 +52,7 @@ func main() {
 			log.Println("Interrupt occured, closing the connection...")
 
 			// Close our websocket connection
-			err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			err := conn.WriteMessage(websocket.TextMessage, []byte("closed"))
 			if err != nil {
 				log.Println("Error during closing websocket: ", err)
 				return
