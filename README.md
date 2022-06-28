@@ -1,6 +1,5 @@
-## To run the program :-
+## To run the program (Now, root directory of repo, contains the proper files):-
 ```
-$ cd pub-sub-hub
 $ go run server.go
 
 In different terminal(s)
