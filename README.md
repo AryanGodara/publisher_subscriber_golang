@@ -1,9 +1,9 @@
 ## To run the program (Now, root directory of repo, contains the proper files):-
 ```
-$ go run server.go
+$ go run cmd/server/main.go
 
 In different terminal(s)
-$ go run client.go   (in as many terminals as you want)
+$ go run cmmd/client/main.go   (in as many terminals as you want)
 
 
 For sending HTTP post requests, use Postman:
